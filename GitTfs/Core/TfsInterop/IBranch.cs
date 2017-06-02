@@ -50,19 +50,29 @@ namespace Sep.Git.Tfs.Core.TfsInterop
     {
         public static BranchTree GetRootTfsBranchForRemotePath(this ITfsHelper tfs, string remoteTfsPath, bool searchExactPath = true)
         {
-            var branches = tfs.GetBranches();
-            var branchTrees = branches.Aggregate(new Dictionary<string, BranchTree>(StringComparer.OrdinalIgnoreCase), (dict, branch) => dict.Tap(d => d.Add(branch.Path, new BranchTree(branch))));
-            foreach(var branch in branchTrees.Values)
+            var branches = tfs.GetBranches().Select(branch => new BranchTree(branch)).ToList();
+            var branchesByPath = branches.ToLookup(branch => branch.Path, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var branch in branches)
             {
-                if(!branch.IsRoot)
+                if (branch.IsRoot) continue;
+
+                //in some strange cases there might be a branch which is not marked as IsRoot
+                //but the parent for this branch is missing.
+                var possibleParents = branchesByPath[branch.ParentPath];
+                switch (possibleParents.Count())
                 {
-                    //in some strange cases there might be a branch which is not marked as IsRoot
-                    //but the parent for this branch is missing.
-                    if (branchTrees.ContainsKey(branch.ParentPath))
-                        branchTrees[branch.ParentPath].ChildBranches.Add(branch);
+                    case 0:
+                        break;
+                    case 1:
+                        possibleParents.Single().ChildBranches.Add(branch);
+                        break;
+                    default:
+                        throw new GitTfsException($"Cannot uniquely identify parent branch because more than one branch had the path \"{branch.ParentPath}\".");
                 }
             }
-            var roots = branchTrees.Values.Where(b => b.IsRoot);
+
+            var roots = branches.Where(b => b.IsRoot);
             return roots.FirstOrDefault(b =>
             {
                 var visitor = new BranchTreeContainsPathVisitor(remoteTfsPath, searchExactPath);
