@@ -66,6 +66,7 @@ namespace Sep.Git.Tfs.Test.Integration
             {
                 r.Changeset(1, "Create Team Project", DateTime.Now).Change(TfsChangeType.Add, TfsItemType.Folder, "$/MyProject");
                 r.Changeset(2, "Create trunk", DateTime.Now).Change(TfsChangeType.Add, TfsItemType.Folder, "$/MyProject/Trunk");
+                r.SetRootBranch("$/MyProject/Trunk");
                 r.BranchChangeset(3, "Create branch", DateTime.Now, "$/MyProject/Trunk", "$/MyProject/Branch", 2);
                 r.Changeset(4, "Delete branch", DateTime.Now).Change(TfsChangeType.Delete, TfsItemType.Folder, "$/MyProject/Branch");
                 r.BranchChangeset(5, "Create branch", DateTime.Now, "$/MyProject/Trunk", "$/MyProject/Branch", 4);
